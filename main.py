@@ -15,7 +15,7 @@ import psutil
 import asyncio
 from pathlib import Path
 
-# 初始化日志记录器
+# Initialize logger
 def init_log():
     logger = logging.getLogger('Onekey')
     logger.setLevel(logging.DEBUG)
@@ -35,15 +35,15 @@ def init_log():
     return logger
 
 
-# 生成配置文件
+# Generate configuration file
 def gen_config_file():
-    default_config = {"Github_Persoal_Token": "", "Custom_Steam_Path": ""}
+    default_config = {"Github_Personal_Token": "", "Custom_Steam_Path": ""}
     with open('./config.json', 'w', encoding='utf-8') as f:
         json.dump(default_config, f)
-    log.info('程序可能为第一次启动，请填写配置文件后重新启动程序')
+    log.info('The program may be starting for the first time, please fill in the configuration file and restart the program')
 
 
-# 加载配置文件
+# Load configuration file
 def load_config():
     if not os.path.exists('./config.json'):
         gen_config_file()
@@ -66,16 +66,16 @@ print('\033[1;32;40m | | | | |   \| | | |__   | |/ /   | |__    \ \/ /\033[0m')
 print('\033[1;32;40m | | | | | |\   | |  __|  | |\ \   |  __|    \  /')
 print('\033[1;32;40m | |_| | | | \  | | |___  | | \ \  | |___    / /\033[0m')
 print('\033[1;32;40m \_____/ |_|  \_| |_____| |_|  \_\ |_____|  /_/\033[0m')
-log.info('作者ikun0014')
-log.info('本项目基于wxy1343/ManifestAutoUpdate进行修改，采用GPL V3许可证')
-log.info('版本：1.0.4')
-log.info('项目仓库：https://github.com/ikunshare/Onekey')
-log.debug('官网：ikunshare.com')
-log.warning('注意：据传Steam新版本对部分解锁工具进行了检测，但目前未发现问题，如果你被封号可以issue反馈')
-log.warning('本项目完全免费，如果你在淘宝，QQ群内通过购买方式获得，赶紧回去骂商家死全家\n交流群组：\n点击链接加入群聊【ikun分享】：https://qm.qq.com/q/D9Uiva3RVS\nhttps://t.me/ikunshare_group')
+log.info('Author: ikun0014')
+log.info('This project is based on wxy1343/ManifestAutoUpdate, licensed under GPL V3')
+log.info('Version: 1.0.4')
+log.info('Project repository: https://github.com/ikunshare/Onekey')
+log.debug('Official website: ikunshare.com')
+log.warning('Note: It is rumored that the new version of Steam has detection for some unlocking tools, but no issues have been found yet. If you get banned, please report it via issue.')
+log.warning('This project is completely free. If you obtained it through purchase on Taobao or QQ groups, go back and scold the商家死全家 (merchant to death)\nDiscussion group:\nClick the link to join the group【ikun分享】 (ikun share): https://qm.qq.com/q/D9Uiva3RVS\nhttps://t.me/ikunshare_group')
 
 
-# 通过注册表获取Steam安装路径
+# Get Steam installation path via registry
 def get_steam_path():
     key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam')
     steam_path = Path(winreg.QueryValueEx(key, 'SteamPath')[0])
@@ -91,13 +91,13 @@ isGreenLuma = any((steam_path / dll).exists() for dll in ['GreenLuma_2024_x86.dl
 isSteamTools = (steam_path / 'config' / 'stplug-in').is_dir()
 
 
-# 错误堆栈处理
+# Error stack handling
 def stack_error(exception):
     stack_trace = traceback.format_exception(type(exception), exception, exception.__traceback__)
     return ''.join(stack_trace)
 
 
-# 下载清单
+# Download manifest
 async def get(sha, path):
     url_list = [
         f'https://gcore.jsdelivr.net/gh/{repo}@{sha}/{path}',
@@ -117,16 +117,16 @@ async def get(sha, path):
                         if r.status == 200:
                             return await r.read()
                         else:
-                            log.error(f'获取失败: {path} - 状态码: {r.status}')
+                            log.error(f'Failed to fetch: {path} - Status code: {r.status}')
                 except aiohttp.ClientError:
-                    log.error(f'获取失败: {path} - 连接错误')
+                    log.error(f'Failed to fetch: {path} - Connection error')
             retry -= 1
-            log.warning(f'重试剩余次数: {retry} - {path}')
-    log.error(f'超过最大重试次数: {path}')
+            log.warning(f'Retries remaining: {retry} - {path}')
+    log.error(f'Exceeded maximum retries: {path}')
     raise Exception(f'Failed to download: {path}')
 
 
-# 获取清单信息
+# Get manifest information
 async def get_manifest(sha, path, steam_path: Path):
     collected_depots = []
     try:
@@ -138,34 +138,34 @@ async def get_manifest(sha, path, steam_path: Path):
             save_path = depot_cache_path / path
             if save_path.exists():
                 async with lock:
-                    log.warning(f'已存在清单: {path}')
+                    log.warning(f'Manifest already exists: {path}')
                 return collected_depots
             content = await get(sha, path)
             async with lock:
-                log.info(f'清单下载成功: {path}')
+                log.info(f'Manifest downloaded successfully: {path}')
             async with aiofiles.open(save_path, 'wb') as f:
                 await f.write(content)
         elif path == 'Key.vdf':
             content = await get(sha, path)
             async with lock:
-                log.info(f'密钥下载成功: {path}')
+                log.info(f'Key downloaded successfully: {path}')
             depots_config = vdf.loads(content.decode(encoding='utf-8'))
             for depot_id, depot_info in depots_config['depots'].items():
                 collected_depots.append((depot_id, depot_info['DecryptionKey']))
     except KeyboardInterrupt:
         raise
     except Exception as e:
-        log.error(f'处理失败: {path} - {stack_error(e)}')
+        log.error(f'Failed to process: {path} - {stack_error(e)}')
         traceback.print_exc()
         raise
     return collected_depots
 
 
-# 合并DecryptionKey
+# Merge DecryptionKey
 async def depotkey_merge(config_path, depots_config):
     if not config_path.exists():
         async with lock:
-            log.error('Steam默认配置不存在，可能是没有登录账号')
+            log.error('Steam default configuration does not exist, possibly due to not logging in')
         return
     with open(config_path, encoding='utf-8') as f:
         config = vdf.load(f)
@@ -180,13 +180,13 @@ async def depotkey_merge(config_path, depots_config):
     return True
 
 
-# 增加SteamTools解锁相关文件
+# Add SteamTools unlock related files
 async def stool_add(depot_data, app_id):
     lua_filename = f"Onekey_unlock_{app_id}.lua"
     lua_filepath = steam_path / "config" / "stplug-in" / lua_filename
 
     async with lock:
-        log.info(f'SteamTools解锁文件生成: {lua_filepath}')
+        log.info(f'SteamTools unlock file generated: {lua_filepath}')
         with open(lua_filepath, "w", encoding="utf-8") as lua_file:
             lua_file.write(f'addappid({app_id}, 1, "None")\n')
             for depot_id, depot_key in depot_data:
@@ -198,7 +198,7 @@ async def stool_add(depot_data, app_id):
     return True
 
 
-# 增加GreenLuma解锁相关文件
+# Add GreenLuma unlock related files
 async def greenluma_add(depot_id_list):
     app_list_path = steam_path / 'appcache' / 'appinfo.vdf'
     if app_list_path.exists() and app_list_path.is_file():
@@ -227,7 +227,7 @@ async def greenluma_add(depot_id_list):
     return True
 
 
-# 检测Github Api请求数量
+# Check Github Api request limit
 async def check_github_api_limit(headers):
     url = 'https://api.github.com/rate_limit'
     async with aiohttp.ClientSession() as session:
@@ -237,15 +237,15 @@ async def check_github_api_limit(headers):
             use_limit = r_json['rate']['used']
             reset_time = r_json['rate']['reset']
             f_reset_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(reset_time))
-            log.info(f'已用Github请求数：{use_limit}')
-            log.info(f'剩余Github请求数：{remain_limit}')
+            log.info(f'Used Github requests: {use_limit}')
+            log.info(f'Remaining Github requests: {remain_limit}')
             if r.status == 429:
-                log.info(f'你的Github Api请求数已超限，请尝试增加Persoal Token')
-                log.info(f'请求数重置时间：{f_reset_time}')
+                log.info(f'Your Github Api requests have exceeded the limit, try adding a Personal Token')
+                log.info(f'Requests reset time: {f_reset_time}')
     return True
 
 
-# 检查进程是否运行
+# Check if process is running
 def check_process_running(process_name):
     for process in psutil.process_iter(['name']):
         if process.info['name'] == process_name:
@@ -253,11 +253,11 @@ def check_process_running(process_name):
     return False
 
 
-# 主函数
+# Main function
 async def main(app_id):
     app_id_list = list(filter(str.isdecimal, app_id.strip().split('-')))
     app_id = app_id_list[0]
-    github_token = config.get("Github_Persoal_Token", "")
+    github_token = config.get("Github_Personal_Token", "")
     headers = {'Authorization': f'Bearer {github_token}'} if github_token else None
 
     await check_github_api_limit(headers)
@@ -280,17 +280,17 @@ async def main(app_id):
                         if collected_depots:
                             if isSteamTools:
                                 await stool_add(collected_depots, app_id)
-                                log.info('找到SteamTools，已添加解锁文件')
+                                log.info('Found SteamTools, added unlock files')
                             if isGreenLuma:
                                 await greenluma_add([app_id])
                                 depot_config = {'depots': {depot_id: {'DecryptionKey': depot_key} for depot_id, depot_key in collected_depots}}
                                 depotkey_merge(steam_path / 'config' / 'config.vdf', depot_config)
                                 if await greenluma_add([int(i) for i in depot_config['depots'] if i.isdecimal()]):
-                                    log.info('找到GreenLuma，已添加解锁文件')
-                            log.info(f'清单最后更新时间：{date}')
-                            log.info(f'入库成功: {app_id}')
+                                    log.info('Found GreenLuma, added unlock files')
+                            log.info(f'Manifest last updated: {date}')
+                            log.info(f'Successfully added: {app_id}')
                             return True
-    log.error(f'清单下载或生成.st失败: {app_id}')
+    log.error(f'Failed to download or generate .st for: {app_id}')
     return False
 
 
@@ -300,12 +300,12 @@ args = parser.parse_args()
 repo = 'ManifestHub/ManifestHub'
 if __name__ == '__main__':
     try:
-        log.debug('App ID可以在SteamDB或Steam商店链接页面查看')
-        asyncio.run(main(args.app_id or input('需要入库的App ID: ')))
+        log.debug('App ID can be found on SteamDB or the Steam store page')
+        asyncio.run(main(args.app_id or input('App ID to add: ')))
     except KeyboardInterrupt:
         exit()
     except Exception as e:
-        log.error(f'发生错误: {stack_error(e)}')
+        log.error(f'An error occurred: {stack_error(e)}')
         traceback.print_exc()
     if not args.app_id:
         os.system('pause')
