@@ -16,6 +16,7 @@ import asyncio
 from pathlib import Path
 
 # Initialize logger
+# Sets up a logger with colored output for different log levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 def init_log():
     logger = logging.getLogger('Onekey')
     logger.setLevel(logging.DEBUG)
@@ -36,6 +37,7 @@ def init_log():
 
 
 # Generate configuration file
+# Creates a default configuration file if it does not already exist, prompting the user to fill it in
 def gen_config_file():
     default_config = {"Github_Personal_Token": "", "Custom_Steam_Path": ""}
     with open('./config.json', 'w', encoding='utf-8') as f:
@@ -44,6 +46,7 @@ def gen_config_file():
 
 
 # Load configuration file
+# Loads the configuration file; if it does not exist, it generates a new one and exits the program
 def load_config():
     if not os.path.exists('./config.json'):
         gen_config_file()
@@ -76,6 +79,7 @@ log.warning('This project is completely free. If you obtained it through purchas
 
 
 # Get Steam installation path via registry
+# Retrieves the Steam installation path from the Windows registry, or uses a custom path if specified in the config
 def get_steam_path():
     key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam')
     steam_path = Path(winreg.QueryValueEx(key, 'SteamPath')[0])
@@ -92,12 +96,14 @@ isSteamTools = (steam_path / 'config' / 'stplug-in').is_dir()
 
 
 # Error stack handling
+# Formats and returns the stack trace for a given exception
 def stack_error(exception):
     stack_trace = traceback.format_exception(type(exception), exception, exception.__traceback__)
     return ''.join(stack_trace)
 
 
 # Download manifest
+# Attempts to download a manifest file from multiple URLs with retries
 async def get(sha, path):
     url_list = [
         f'https://gcore.jsdelivr.net/gh/{repo}@{sha}/{path}',
@@ -127,6 +133,7 @@ async def get(sha, path):
 
 
 # Get manifest information
+# Downloads and processes manifest files, handling both .manifest and Key.vdf files
 async def get_manifest(sha, path, steam_path: Path):
     collected_depots = []
     try:
@@ -162,6 +169,7 @@ async def get_manifest(sha, path, steam_path: Path):
 
 
 # Merge DecryptionKey
+# Merges decryption keys into the Steam configuration file
 async def depotkey_merge(config_path, depots_config):
     if not config_path.exists():
         async with lock:
@@ -181,6 +189,7 @@ async def depotkey_merge(config_path, depots_config):
 
 
 # Add SteamTools unlock related files
+# Generates and processes unlock files for SteamTools
 async def stool_add(depot_data, app_id):
     lua_filename = f"Onekey_unlock_{app_id}.lua"
     lua_filepath = steam_path / "config" / "stplug-in" / lua_filename
@@ -199,6 +208,7 @@ async def stool_add(depot_data, app_id):
 
 
 # Add GreenLuma unlock related files
+# Generates and processes unlock files for GreenLuma
 async def greenluma_add(depot_id_list):
     app_list_path = steam_path / 'appcache' / 'appinfo.vdf'
     if app_list_path.exists() and app_list_path.is_file():
@@ -228,6 +238,7 @@ async def greenluma_add(depot_id_list):
 
 
 # Check Github Api request limit
+# Checks and logs the current rate limit status of the GitHub API
 async def check_github_api_limit(headers):
     url = 'https://api.github.com/rate_limit'
     async with aiohttp.ClientSession() as session:
@@ -246,6 +257,7 @@ async def check_github_api_limit(headers):
 
 
 # Check if process is running
+# Checks if a specific process is currently running on the system
 def check_process_running(process_name):
     for process in psutil.process_iter(['name']):
         if process.info['name'] == process_name:
@@ -254,6 +266,7 @@ def check_process_running(process_name):
 
 
 # Main function
+# Orchestrates the main workflow of the program, including fetching and processing manifests, and handling unlock files
 async def main(app_id):
     app_id_list = list(filter(str.isdecimal, app_id.strip().split('-')))
     app_id = app_id_list[0]
